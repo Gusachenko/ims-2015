@@ -1,0 +1,14 @@
+gluster volume create ${GLUSTER_VOL} replica ${GLUSTER_REPLICA} ${my_ip}:${GLUSTER_BRICK_PATH} ${GLUSTER_PEER}:${GLUSTER_BRICK_PATH} force
+
+gluster volume start ${GLUSTER_VOL}
+
+docker build -t leti/ims-gluster-server .
+docker build -t leti/ims-gluster-client .
+
+sudo mkdir /mnt/glusterfs && sudo mount -t glusterfs ${peer_ip}:/ims /mnt/glusterfs
+
+
+gluster peer probe ${GLUSTER_PEER}
+
+172.17.0.8 gluster1
+172.17.0.9 gluster2
