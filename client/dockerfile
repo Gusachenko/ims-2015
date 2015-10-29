@@ -18,5 +18,6 @@ RUN mkdir -p /usr/local/bin
 ADD ./scripts /usr/local/bin
 RUN chmod +x /usr/local/bin/*.sh
 ADD ./scripts/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
+EXPOSE 22
 
 CMD ["/usr/local/bin/docker_run.sh"]

@@ -1,0 +1,9 @@
+---
+- name: glusterfs-server
+  #image: ####
+  dir: "./server"
+  count: 3
+- name: glusterfs-client
+  #image: ####
+  dir: "./client"
+  count: 1
