@@ -11,9 +11,6 @@ RUN add-apt-repository -y ppa:gluster/glusterfs-3.5 && \
 
 RUN mkdir -p /var/log/supervisor
 
-ENV GLUSTER_VOL ims
-#ENV GLUSTER_REPLICA 2
-ENV GLUSTER_BRICK_PATH /gluster_volume
 ENV DEBUG 1
 
 RUN mkdir -p /usr/local/bin

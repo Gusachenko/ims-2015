@@ -10,5 +10,11 @@ docker build -t leti/ims-gluster-client .
 
 sudo mkdir /mnt/glusterfs && sudo mount -t glusterfs ${peer_ip}:/ims /mnt/glusterfs
 
-172.17.0.1 gluster1
-172.17.0.2 gluster2
+gluster peer probe ${GLUSTER_PEER}
+
+echo "=> Creating GlusterFS volume ${GLUSTER_VOL}..."
+my_ip=`echo ${THIS_IP} | awk -F\/ '{print $1}'`
+gluster volume create ${GLUSTER_VOL} replica ${GLUSTER_REPLICA} ${my_ip}:${GLUSTER_BRICK_PATH} ${GLUSTER_PEER}:${GLUSTER_BRICK_PATH} force
+
+echo "=> Starting GlusterFS volume ${GLUSTER_VOL}..."
+gluster volume start ${GLUSTER_VOL}

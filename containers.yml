@@ -1,9 +1,12 @@
----
-- name: glusterfs-server
-  #image: ####
-  dir: "./server"
-  count: 3
-- name: glusterfs-client
-  #image: ####
-  dir: "./client"
-  count: 1
+gluster:
+      gluster_vol: ims
+      gluster_brick: "/gluster_volume"
+data:
+      - name: glusterfs-server
+        #image: ####
+        dir: "./server"
+        count: 3
+      - name: glusterfs-client
+        #image: ####
+        dir: "./client"
+        count: 1

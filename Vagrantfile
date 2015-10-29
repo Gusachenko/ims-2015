@@ -11,7 +11,7 @@ require 'yaml'
 containers = YAML.load_file('containers.yml')
 
 Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
-    containers.each do |container|
+    containers["data"].each do |container|
         (1..container["count"]).each do |i|
             config.vm.define vm_name = "#{container["name"]}-#{i}" do |config|
                 config.vm.synced_folder ".", "/vagrant", disabled: true
