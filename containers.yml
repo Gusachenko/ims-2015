@@ -6,7 +6,11 @@ data:
         #image: ####
         dir: "./server"
         count: 3
+        type: server
       - name: glusterfs-client
         #image: ####
         dir: "./client"
         count: 1
+        type: client
+        volumes:
+          - "/gluster_volume:/mnt/glusterfs"

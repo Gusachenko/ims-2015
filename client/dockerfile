@@ -13,6 +13,7 @@ RUN mkdir -p /var/log/supervisor
 
 ENV DEBUG 1
 
+RUN mkdir /mnt/glusterfs
 
 RUN mkdir -p /usr/local/bin
 ADD ./scripts /usr/local/bin

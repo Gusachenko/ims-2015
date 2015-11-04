@@ -19,6 +19,12 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
                     config.vm.hostname = vm_name
                     d.build_dir = container["dir"]
                     d.name = vm_name
+                    d.privileged = true
+                    if container["type"] != 'server'
+                        d.volumes = container["volumes"]
+                    else
+                        d.volumes = ["/#{containers["gluster"]["gluster_brick"]}_#{i}:/#{containers["gluster"]["gluster_brick"]}"]
+                    end
                 end
             end
         end
