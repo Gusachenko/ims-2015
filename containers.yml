@@ -9,8 +9,6 @@ data:
         type: server
       - name: glusterfs-client
         #image: ####
-        dir: "./client"
+        dir: "./client/app"
         count: 1
         type: client
-        volumes:
-          - "/gluster_volume:/mnt/glusterfs"

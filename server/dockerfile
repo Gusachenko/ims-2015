@@ -1,11 +1,11 @@
 #docker
-FROM ubuntu:14.04
+FROM buildpack-deps:jessie
 
 MAINTAINER 0303 <farmatholin@gmail.com>
 
-RUN apt-get update && \
-    apt-get install -y python-software-properties software-properties-common
-RUN add-apt-repository -y ppa:gluster/glusterfs-3.5 && \
+RUN wget -O - http://download.gluster.org/pub/gluster/glusterfs/3.7/3.7.6/pub.key | apt-key add -
+
+RUN echo deb http://download.gluster.org/pub/gluster/glusterfs/3.7/3.7.6/Debian/jessie/apt jessie main > /etc/apt/sources.list.d/gluster.list && \
     apt-get update && \
     apt-get install -y glusterfs-server supervisor
 

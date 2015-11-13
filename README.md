@@ -5,22 +5,32 @@
 
 Установка зависимостей
 
+~~~
 $ pip install -r requirements.txt
-
+~~~
 Запуск 
-
+~~~
 $ ./pgluster.py
+~~~
+
+## Использование API
+
+#### Создать объект
+Отправить файл
+
+~~~
+echo "Hello World" > mytestfile
+curl -v -X PUT -T mytestfile -H  http://localhost:9093/files
+~~~
 
 
-Механизм:
-<ul>
-<li>"pgluster.py up" поднимает всё;</li>
-<li>"pgluster.py put" кладёт файл возвращая id. Наименование файла(id) вычисляется с помощью md5sum</li>
-<li>"pgluster.py get -id aaaa -o bbbb" получает файл с id "aaaa" и кладёт его в "bbbb";</li>
-<li>"pgluster.py status" информация о серверах;</li>
-</ul>
+#### Получение объекта
+Можно получить файл выполнив комманду:
 
-<br/>
+~~~
+curl -v -X GET -o newfile http://localhost:9093/files/<object_id>
+cat newfile
+~~~
 Участники:
 
 -Марин Владислав 0303

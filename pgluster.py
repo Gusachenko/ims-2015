@@ -35,7 +35,7 @@ def manage_script(args):
 
 
 def up_vagrant():
-    rc = manage_script([VAGRANT, 'up'])
+    rc = manage_script([VAGRANT, 'up', "--no-parallel"])
 
     return rc
 
@@ -86,12 +86,9 @@ def link_servers(containers, gluster_data):
 def connect_client(server, client, gluster_data):
     run_command = "mount -t glusterfs " + server + ":/" + gluster_data['gluster_vol'] + " /mnt/glusterfs"
 
-    i = 0
-    while i < client['count']:
-        i += 1
-        container_name = client['name'] + "-" + str(i)
-        rc = manage_script([DOCKER, 'exec', container_name, '/bin/sh', '-c', run_command])
-        print "connect return code = %d" % rc
+
+    rc = manage_script([DOCKER, 'exec', "glusterfs-client", '/bin/sh', '-c', run_command])
+    print "connect return code = %d" % rc
 
 
 def stop_all(containers):
@@ -101,6 +98,9 @@ def stop_all(containers):
             i += 1
             container_name = item['name'] + "-" + str(i)
             manage_script([DOCKER, 'rm', '-f', container_name])
+        #manage_script([DOCKER, 'rm', '-f', "web-gluster-client"])
+        manage_script([DOCKER, 'rm', '-f', "glusterfs-client"])
+        manage_script([DOCKER, 'rm', '-f', "nginx-gluster"])
     return 1
 
 

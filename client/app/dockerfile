@@ -1,0 +1,15 @@
+FROM python:2.7-onbuild
+
+MAINTAINER 0303 <farmatholin@gmail.com>
+
+RUN wget -O - http://download.gluster.org/pub/gluster/glusterfs/3.7/3.7.6/pub.key | apt-key add -
+
+RUN echo deb http://download.gluster.org/pub/gluster/glusterfs/3.7/3.7.6/Debian/jessie/apt jessie main > /etc/apt/sources.list.d/gluster.list  && \
+    apt-get update && \
+    apt-get install -y glusterfs-client
+
+ENV DEBUG 1
+
+RUN mkdir /mnt/glusterfs
+
+EXPOSE 8000

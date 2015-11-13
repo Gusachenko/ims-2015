@@ -1,20 +1,9 @@
 import hashlib
-import os.path
+import os
 from random import randint
+from shutil import move
 
-
-def md5_file(f_name):
-    h = hashlib.md5()
-    with open(f_name, "rb") as f:
-        for chunk in iter(lambda: f.read(4096), "b"):
-            h.update(chunk)
-    return h.hexdigest()
-
-
-def md5_data(data):
-    h = hashlib.md5()
-    h.update(data)
-    return h.hexdigest()
+VOLUME_DIR = os.environ.get('SAVE_DIR', "/mnt/glusterfs")
 
 
 def save_file(stream):
@@ -28,14 +17,14 @@ def save_file(stream):
                 break
             f.write(chunk)
             h.update(chunk)
-    local_dir = os.path.dirname(os.path.realpath(__file__))
-    full_file_name = local_dir + "/" + h.hexdigest()
+    full_file_name = VOLUME_DIR + "/" + h.hexdigest()
     if not os.path.isfile(full_file_name):
-        os.rename(tmp_name, full_file_name)
-    os.remove(tmp_name)
-    return h
+        move(tmp_name, full_file_name)
+    else:
+        os.remove(tmp_name)
+    return h.hexdigest()
 
 
 def get_file(file_name):
-    f = open(file_name, 'rb')
+    f = open(VOLUME_DIR + '/' + file_name, 'rb')
     return f
