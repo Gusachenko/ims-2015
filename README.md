@@ -11,6 +11,10 @@ $ pip install -r requirements.txt
 Запуск 
 ~~~
 $ ./pgluster.py
+
+#check
+curl http://localhost:9092/
+"Good morning sir"
 ~~~
 
 ## Использование API
