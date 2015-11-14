@@ -25,6 +25,7 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
                 config.vm.hostname = vm_name
                 d.remains_running = true
                 d.build_dir = server["dir"]
+                d.build_args = ["--tag=farmatholin/glusterfs-server:latest"]
                 d.privileged = true
                 d.name = vm_name
                 d.volumes = ["/#{containers["gluster"]["gluster_brick"]}_#{i}:/#{containers["gluster"]["gluster_brick"]}"]
@@ -37,6 +38,7 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
             d.privileged = true
             d.remains_running = true
             d.build_dir = client["dir"]
+            d.build_args = ["--tag=farmatholin/glusterfs-client:latest"]
             d.name = client["name"]
             d.expose = [8000]
             d.has_ssh = false
