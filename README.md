@@ -24,7 +24,7 @@ curl http://localhost:9092/
 
 ~~~
 echo "Hello World" > mytestfile
-curl -v -X PUT -T mytestfile -H  http://localhost:9093/files
+curl -v -X POST -T mytestfile -H  http://localhost:9093/files
 ~~~
 
 
