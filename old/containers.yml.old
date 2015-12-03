@@ -1,0 +1,18 @@
+gluster:
+      gluster_vol: ims
+      gluster_brick: "/gluster_volume"
+data:
+      server:
+          name: glusterfs-server
+          #image: ####
+          dir: "./server"
+          count: 3
+      client:
+          name: glusterfs-client
+          #image: ####
+          workers: 5
+          dir: "./client/app"
+      web:
+          name: nginx-glusterfs
+          dir: "./client/nginx"
+          port: "9092"

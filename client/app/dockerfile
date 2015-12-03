@@ -1,6 +1,6 @@
 FROM python:2.7-onbuild
 
-MAINTAINER 0303 <farmatholin@gmail.com>
+MAINTAINER Vladislav Marin <farmatholin@gmail.com>
 
 RUN wget -O - http://download.gluster.org/pub/gluster/glusterfs/3.7/3.7.6/pub.key | apt-key add -
 

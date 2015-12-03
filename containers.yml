@@ -1,18 +1,24 @@
-gluster:
-      gluster_vol: ims
-      gluster_brick: "/gluster_volume"
-data:
+glusterfs:
+      vol: ims
+      brick: "/gluster_volume"
       server:
           name: glusterfs-server
-          #image: ####
-          dir: "./server"
-          count: 3
+          image: "farmatholin/glusterfs-server:latest"
+          credentials:
+            - user: user
+              key: "key/open_key"
+              ip: "192.168.94.133"
+            - user: user
+              key: "key/open_key"
+              ip: "192.168.94.134"
+            - user: user
+              key: "key/open_key"
+              ip: "192.168.94.136"
       client:
           name: glusterfs-client
-          #image: ####
+          image: glusterfs-client
           workers: 5
-          dir: "./client/app"
       web:
           name: nginx-glusterfs
-          dir: "./client/nginx"
+          image: glusterfs-client-nginx
           port: "9092"

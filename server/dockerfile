@@ -1,7 +1,7 @@
 #docker
 FROM buildpack-deps:jessie
 
-MAINTAINER 0303 <farmatholin@gmail.com>
+MAINTAINER Vladislav Marin <farmatholin@gmail.com>
 
 RUN wget -O - http://download.gluster.org/pub/gluster/glusterfs/3.7/3.7.6/pub.key | apt-key add -
 
@@ -19,4 +19,4 @@ RUN chmod +x /usr/local/bin/*.sh
 ADD ./scripts/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
 EXPOSE 22
 
-CMD ["/usr/local/bin/docker_run.sh"]
+CMD ["/usr/bin/supervisord"]

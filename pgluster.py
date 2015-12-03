@@ -3,23 +3,40 @@
 
 # docker inspect -format '{{ .NetworkSettings.IPAddress }}'
 # Задачи
-# 1 поднять вагрант
-# 2 по конфигу собрать всё вкучу
+# 1 по ssh поключиться к машинам по конфигу
+# 2 на каждой поднять сервер
 # 3 связать всё это дело
 # 4 ???
 # 5 profit
-
+import argparse
+import threading
+import paramiko
 import yaml
 from subprocess import Popen, PIPE
-import datetime
-import sys
-import os
 from time import sleep
-import time
-import re
 
-VAGRANT = 'vagrant'
 DOCKER = 'docker'
+VAGRANT = 'vagrant'
+
+
+class ServerUpThread(threading.Thread):
+    def __init__(self, thread_id, credentials, name, image):
+        threading.Thread.__init__(self)
+        self.thread_id = thread_id
+        self.credentials = credentials
+        self.name = name
+        self.image = image
+
+    def run(self):
+        print "Starting " + self.name + " id " + str(self.thread_id)
+        exit_code = up_server(
+            self.credentials['ip'],
+            self.credentials['user'],
+            self.credentials['key'],
+            self.name,
+            self.image
+        )
+        print self.name + " id " + str(self.thread_id) + " exit code " + str(exit_code)
 
 
 def manage_script(args, print_output=False, print_errors=False):
@@ -38,101 +55,115 @@ def manage_script(args, print_output=False, print_errors=False):
     return rc
 
 
+def get_containers_data():
+    with open("containers.yml", 'r') as stream:
+        return yaml.load(stream)
+
+
 def up_vagrant():
     rc = manage_script([VAGRANT, 'up', "--no-parallel"])
 
     return rc
 
 
-def link_servers(containers, gluster_data):
-    ips = []
-    i = 0
-    while i < containers['count']:
-        i += 1
-        container_name = containers['name'] + "-" + str(i)
-        child = Popen([DOCKER, 'inspect', '--format', '\'{{ .NetworkSettings.IPAddress }}\'', container_name],
-                      stdout=PIPE, stderr=PIPE)
+def exec_ssh_docker(node, name, cmd):
+    ssh = paramiko.SSHClient()
+    ssh.set_missing_host_key_policy(
+        paramiko.AutoAddPolicy()
+    )
+    rsa_key = paramiko.RSAKey.from_private_key_file(node['key'])
+    ssh.connect(node['ip'], username=node['user'], pkey=rsa_key)
 
-        output = child.stdout.read()
-        ips.append(output
-                   .rstrip()
-                   .replace('\'', '')
-                   )
+    cmd = 'docker exec ' + name + "/bin/sh -c " + cmd
+    ssh_stdin, ssh_stdout, ssh_stderr = ssh.exec_command(cmd)
 
+    return ssh_stdout.channel.recv_exit_status()
+
+
+def up_server(host, user, key, name, image):
+    ssh = paramiko.SSHClient()
+    ssh.set_missing_host_key_policy(
+        paramiko.AutoAddPolicy()
+    )
+    rsa_key = paramiko.RSAKey.from_private_key_file(key)
+    ssh.connect(host, username=user, pkey=rsa_key)
+
+    # stop container
+    cmd = DOCKER + " rm -f " + name
+    ssh.exec_command(cmd)
+
+    # run container
+    cmd = DOCKER + " run -d --name='" + name + " --privileged=true --net='host' " + image
+    ssh_stdin, ssh_stdout, ssh_stderr = ssh.exec_command(cmd)
+
+    return ssh_stdout.channel.recv_exit_status()
+
+
+def link_servers(nodes, name, vol, brick):
     peer_command = ''
-    start_command = 'gluster volume start ' + gluster_data['gluster_vol']
+    start_command = 'gluster volume start ' + vol
     connect_command = 'gluster volume create ' \
-                      + gluster_data['gluster_vol'] \
+                      + vol \
                       + ' replica ' \
-                      + str(containers['count']) \
+                      + "2" \
                       + ' transport tcp '
-    for ip in ips:
-        peer_command += "gluster peer probe " + ip + "; "
-        connect_command += " " + ip + ":" + gluster_data['gluster_brick']
+
+    for node in nodes:
+        peer_command += "gluster peer probe " + node['ip'] + "; "
+        connect_command += " " + node['ip'] + ":" + brick
 
     connect_command += " force"
+    first_node = nodes[0]
 
-    first_name = containers['name'] + '-' + '1'
-
-    rc = manage_script([DOCKER, 'exec', first_name, '/bin/sh', '-c', peer_command],True)
+    rc = exec_ssh_docker(first_node, name, peer_command)
     print "connecting peers return code = %d" % rc
 
-    rc = manage_script([DOCKER, 'exec', first_name, '/bin/sh', '-c', connect_command],True)
-    print "connecting volumes return code = %d" % rc
 
-    rc = manage_script([DOCKER, 'exec', first_name, '/bin/sh', '-c', start_command],True)
-    print "start command return code = %d" % rc
-
-    return ips[0]
-
-
-def connect_client(server, client, gluster_data):
-    run_command = "mount -t glusterfs " + server + ":/" + gluster_data['gluster_vol'] + " /mnt/glusterfs"
-
-    rc = manage_script([DOCKER, 'exec', client['name'], '/bin/sh', '-c', run_command],True)
-    print "connect return code = %d" % rc
-    return rc
-
-
-def stop_all(containers):
-    manage_script([VAGRANT, 'halt', '-f'],True)
-
-    servers = containers['data']['server']
-    i = 0
-    while i < servers['count']:
-        i += 1
-        container_name = servers['name'] + "-" + str(i)
-        manage_script([DOCKER, 'rm', '-f', container_name])
-    manage_script([DOCKER, 'rm', '-f', containers['data']['client']['name']])
-    manage_script([DOCKER, 'rm', '-f', containers['data']['web']['name']])
-
-
-def get_containers_data():
-    with open("containers.yml", 'r') as stream:
-        return yaml.load(stream)
-
-
-def main():
+def up():
     gluster_data = get_containers_data()
-    print "stop all"
-    stop_all(gluster_data)
-    servers = gluster_data['data']['server']
-    client = gluster_data['data']['client']
-    web_proxy = gluster_data['data']['web']
-    print "starting app"
-    rc = up_vagrant()
-    if rc == 0:
-        print "start ok, link"
-        server_ip = link_servers(servers, gluster_data['gluster'])
-        rc = connect_client(server_ip, client, gluster_data['gluster'])
-        if rc == 0:
-            print "All OK, glusterfs client listen on port %s" % web_proxy['port']
-            return 0
-        else:
-            print "Client link fail\n"
-        print "start fail stop all"
-        stop_all(gluster_data)
-        return 1
+    server_data = gluster_data['glusterfs']['server']
+    gl_data = gluster_data['glusterfs']
+    threads = []
+
+    i = 0
+    for node in server_data['credentials']:
+        i += 1
+        thread = ServerUpThread(i, node, server_data['name'], server_data['image'])
+        thread.start()
+        threads.append(thread)
+
+    for t in threads:
+        t.join()
+    print "Servers Up done"
+    print "Start Linking"
+
+    link_servers(
+        server_data['credentials'],
+        server_data['name'],
+        gl_data['vol'],
+        gl_data['brick']
+    )
+    print "Exiting Main Thread"
+
+    # print up_server(node['ip'], node['user'], node['key'], server_data['name'], server_data['image'])
+
+    # here we need to add some cheks
+    # node = "192.168.94.133"
+    # user = "user"
+    # ssh_key = "key/open_key"
+    #
+    # ssh_stdin, ssh_stdout, ssh_stderr = ssh.exec_command('docker')
+    # ssh_stdin, ssh_stdout, ssh_stderr = ssh.exec_command('docker')
+    #
+    # #ssh_stdout.channel.recv_exit_status()
+    # for line in ssh_stdout:
+    # print '... ' + line.strip('\n')
+    # ssh.close()
+
+    return 1
+
 
 if __name__ == '__main__':
-    main()
+    # here will be args
+    if True:
+        up()

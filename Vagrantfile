@@ -12,33 +12,34 @@ require 'yaml'
 # Be sure to edit 'containers.yml' to provide container details
 containers = YAML.load_file('containers.yml')
 
-container_data = containers["data"]
-server = container_data ["server"]
+container_data = containers["glusterfs"]["data"]
+#server = container_data ["server"]
 client = container_data["client"]
 web_proxy = container_data["web"]
 
 Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
-    (1..server["count"]).each do |i|
-        config.vm.define vm_name = "#{server["name"]}-#{i}" do |config|
-            config.vm.synced_folder ".", "/vagrant", disabled: true
-            config.vm.provider "docker" do |d|
-                config.vm.hostname = vm_name
-                d.remains_running = true
-                d.build_dir = server["dir"]
-                d.build_args = ["--tag=farmatholin/glusterfs-server:latest"]
-                d.privileged = true
-                d.name = vm_name
-                d.volumes = ["/#{containers["gluster"]["gluster_brick"]}_#{i}:/#{containers["gluster"]["gluster_brick"]}"]
-            end
-        end
-    end
+    #(1..server["count"]).each do |i|
+    #    config.vm.define vm_name = "#{server["name"]}-#{i}" do |config|
+    #        config.vm.synced_folder ".", "/vagrant", disabled: true
+    #        config.vm.provider "docker" do |d|
+    #            config.vm.hostname = vm_name
+    #            d.remains_running = true
+    #            d.build_dir = server["dir"]
+    #            d.build_args = ["--tag=farmatholin/glusterfs-server:latest"]
+    #            d.privileged = true
+    #            d.name = vm_name
+    #            d.volumes = ["/#{containers["gluster"]["gluster_brick"]}_#{i}:/#{containers["gluster"]["gluster_brick"]}"]
+    #        end
+    #    end
+    #end
     config.vm.define "web" do |web|
         web.vm.synced_folder ".", "/vagrant", disabled: true
         web.vm.provider "docker" do |d|
             d.privileged = true
             d.remains_running = true
-            d.build_dir = client["dir"]
-            d.build_args = ["--tag=farmatholin/glusterfs-client:latest"]
+            d.image = client["image"]
+            #d.build_dir = client["dir"]
+            #d.build_args = ["--tag=farmatholin/glusterfs-client:latest"]
             d.name = client["name"]
             d.expose = [8000]
             d.has_ssh = false
@@ -48,7 +49,8 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
     config.vm.define "nginx" do |nginx|
         nginx.vm.synced_folder ".", "/vagrant", disabled: true
         nginx.vm.provider "docker" do |d|
-            d.build_dir = web_proxy["dir"]
+            #d.build_dir = web_proxy["dir"]
+            d.image = web_proxy["image"]
             d.name = web_proxy['name']
             d.ports = ["#{web_proxy["port"]}:80"]
             d.link("#{client["name"]}:#{client["name"]}")
