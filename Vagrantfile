@@ -12,8 +12,8 @@ require 'yaml'
 # Be sure to edit 'containers.yml' to provide container details
 containers = YAML.load_file('containers.yml')
 
-container_data = containers["glusterfs"]["data"]
-#server = container_data ["server"]
+container_data = containers["glusterfs"]
+server = container_data["server"]
 client = container_data["client"]
 web_proxy = container_data["web"]
 

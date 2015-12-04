@@ -74,9 +74,18 @@ def exec_ssh_docker(node, name, cmd):
     rsa_key = paramiko.RSAKey.from_private_key_file(node['key'])
     ssh.connect(node['ip'], username=node['user'], pkey=rsa_key)
 
-    cmd = 'docker exec ' + name + "/bin/sh -c " + cmd
+    cmd = 'docker exec ' + name + " /bin/sh -c '" + cmd + "'"
+
+    print cmd
+
     ssh_stdin, ssh_stdout, ssh_stderr = ssh.exec_command(cmd)
 
+    for line in ssh_stdout:
+        print '... ' + line.strip('\n')
+    for line in ssh_stderr:
+        print '... ' + line.strip('\n')
+
+    ssh.close()
     return ssh_stdout.channel.recv_exit_status()
 
 
@@ -93,10 +102,15 @@ def up_server(host, user, key, name, image):
     ssh.exec_command(cmd)
 
     # run container
-    cmd = DOCKER + " run -d --name='" + name + " --privileged=true --net='host' " + image
+    cmd = DOCKER + " run -d --privileged=true -v /mnt/gluster_volume:/gluster_volume --name='" + name + "' --net='host' " + image
+
+    print cmd
+
     ssh_stdin, ssh_stdout, ssh_stderr = ssh.exec_command(cmd)
 
-    return ssh_stdout.channel.recv_exit_status()
+    rc = ssh_stdout.channel.recv_exit_status()
+    ssh.close()
+    return rc
 
 
 def link_servers(nodes, name, vol, brick):
@@ -105,7 +119,7 @@ def link_servers(nodes, name, vol, brick):
     connect_command = 'gluster volume create ' \
                       + vol \
                       + ' replica ' \
-                      + "2" \
+                      + '2' \
                       + ' transport tcp '
 
     for node in nodes:
@@ -117,6 +131,12 @@ def link_servers(nodes, name, vol, brick):
 
     rc = exec_ssh_docker(first_node, name, peer_command)
     print "connecting peers return code = %d" % rc
+
+    rc = exec_ssh_docker(first_node, name, connect_command)
+    print "volume create command return code = %d" % rc
+
+    rc = exec_ssh_docker(first_node, name, start_command)
+    print "start return code = %d" % rc
 
 
 def up():
@@ -143,6 +163,10 @@ def up():
         gl_data['vol'],
         gl_data['brick']
     )
+    print "Up client"
+
+    up_vagrant()
+
     print "Exiting Main Thread"
 
     # print up_server(node['ip'], node['user'], node['key'], server_data['name'], server_data['image'])

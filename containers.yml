@@ -11,14 +11,17 @@ glusterfs:
             - user: user
               key: "key/open_key"
               ip: "192.168.94.134"
-            - user: user
-              key: "key/open_key"
-              ip: "192.168.94.136"
+#            - user: user
+#              key: "key/open_key"
+#              ip: "192.168.94.136"
+#            - user: user
+#              key: "key/open_key"
+#              ip: "192.168.94.135"
       client:
           name: glusterfs-client
-          image: glusterfs-client
+          image: "farmatholin/glusterfs-client:latest"
           workers: 5
       web:
           name: nginx-glusterfs
-          image: glusterfs-client-nginx
+          image: "farmatholin/glusterfs-client-nginx:latest"
           port: "9092"
