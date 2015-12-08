@@ -14,6 +14,7 @@ import paramiko
 import yaml
 from subprocess import Popen, PIPE
 from time import sleep
+import sys
 
 DOCKER = 'docker'
 VAGRANT = 'vagrant'
@@ -23,9 +24,13 @@ class ServerUpThread(threading.Thread):
     def __init__(self, thread_id, credentials, name, image):
         threading.Thread.__init__(self)
         self.thread_id = thread_id
+        self.result = False
         self.credentials = credentials
         self.name = name
         self.image = image
+
+    def return_exit_code(self):
+        return self.result
 
     def run(self):
         print "Starting " + self.name + " id " + str(self.thread_id)
@@ -36,6 +41,8 @@ class ServerUpThread(threading.Thread):
             self.name,
             self.image
         )
+        if exit_code is 0:
+            self.result = True
         print self.name + " id " + str(self.thread_id) + " exit code " + str(exit_code)
 
 
@@ -61,7 +68,8 @@ def get_containers_data():
 
 
 def up_vagrant():
-    rc = manage_script([VAGRANT, 'up', "--no-parallel"])
+    manage_script([VAGRANT, 'halt', '-f'], True)
+    rc = manage_script([VAGRANT, 'up', "--no-parallel"], True)
 
     return rc
 
@@ -94,15 +102,20 @@ def up_server(host, user, key, name, image):
     ssh.set_missing_host_key_policy(
         paramiko.AutoAddPolicy()
     )
+
     rsa_key = paramiko.RSAKey.from_private_key_file(key)
-    ssh.connect(host, username=user, pkey=rsa_key)
+    ssh.connect(host, username=user, pkey=rsa_key,banner_timeout=120,timeout=120)
 
     # stop container
     cmd = DOCKER + " rm -f " + name
     ssh.exec_command(cmd)
 
     # run container
-    cmd = DOCKER + " run -d --privileged=true -v /mnt/gluster_volume:/gluster_volume --name='" + name + "' --net='host' " + image
+    cmd = DOCKER \
+          + " run -d --privileged=true -v /mnt/gluster_volume:/gluster_volume --name='" \
+          + name \
+          + "' --net='host' " \
+          + image
 
     print cmd
 
@@ -138,10 +151,21 @@ def link_servers(nodes, name, vol, brick):
     rc = exec_ssh_docker(first_node, name, start_command)
     print "start return code = %d" % rc
 
+    return rc
+
+
+def connect_client(server, client, gluster_data):
+    run_command = "mount -t glusterfs " + server + ":/" + gluster_data['vol'] + " /mnt/glusterfs"
+
+    rc = manage_script([DOCKER, 'exec', client['name'], '/bin/sh', '-c', run_command], True)
+    print "connect return code = %d" % rc
+    return rc
+
 
 def up():
     gluster_data = get_containers_data()
     server_data = gluster_data['glusterfs']['server']
+    client_data = gluster_data['glusterfs']['client']
     gl_data = gluster_data['glusterfs']
     threads = []
 
@@ -152,39 +176,39 @@ def up():
         thread.start()
         threads.append(thread)
 
+    res = True
     for t in threads:
         t.join()
+        if t.return_exit_code() is False:
+            res = False
+            print "Node up fail"
+    if res is False:
+        sys.exit(1)
+
     print "Servers Up done"
     print "Start Linking"
 
-    link_servers(
+    rc = link_servers(
         server_data['credentials'],
         server_data['name'],
         gl_data['vol'],
         gl_data['brick']
     )
+    if rc != 0:
+        print "client up fail"
+        sys.exit(1)
     print "Up client"
+    rc = up_vagrant()
+    if rc != 0:
+        print "client up fail"
+        sys.exit(1)
 
-    up_vagrant()
+    print "Link Client"
 
-    print "Exiting Main Thread"
-
-    # print up_server(node['ip'], node['user'], node['key'], server_data['name'], server_data['image'])
-
-    # here we need to add some cheks
-    # node = "192.168.94.133"
-    # user = "user"
-    # ssh_key = "key/open_key"
-    #
-    # ssh_stdin, ssh_stdout, ssh_stderr = ssh.exec_command('docker')
-    # ssh_stdin, ssh_stdout, ssh_stderr = ssh.exec_command('docker')
-    #
-    # #ssh_stdout.channel.recv_exit_status()
-    # for line in ssh_stdout:
-    # print '... ' + line.strip('\n')
-    # ssh.close()
-
-    return 1
+    rc = connect_client(server_data['credentials'][0]['ip'], client_data, gl_data)
+    if rc != 0:
+        print "client link fail"
+        sys.exit(1)
 
 
 if __name__ == '__main__':
