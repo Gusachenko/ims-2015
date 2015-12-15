@@ -1,14 +1,6 @@
 #!/usr/bin/python
 # coding=utf-8
 
-# docker inspect -format '{{ .NetworkSettings.IPAddress }}'
-# Задачи
-# 1 по ssh поключиться к машинам по конфигу
-# 2 на каждой поднять сервер
-# 3 связать всё это дело
-# 4 ???
-# 5 profit
-import argparse
 import threading
 import paramiko
 import yaml
@@ -34,16 +26,20 @@ class ServerUpThread(threading.Thread):
 
     def run(self):
         print "Starting " + self.name + " id " + str(self.thread_id)
-        exit_code = up_server(
-            self.credentials['ip'],
-            self.credentials['user'],
-            self.credentials['key'],
-            self.name,
-            self.image
-        )
-        if exit_code is 0:
-            self.result = True
-        print self.name + " id " + str(self.thread_id) + " exit code " + str(exit_code)
+        try:
+            exit_code = up_server(
+                self.credentials['ip'],
+                self.credentials['user'],
+                self.credentials['key'],
+                self.name,
+                self.image
+            )
+            if exit_code is 0:
+                self.result = True
+            print self.name + " id " + str(self.thread_id) + " exit code " + str(exit_code)
+        except:
+            print self.name + " id " + str(self.thread_id) + " exit code " + str(0)
+
 
 
 def manage_script(args, print_output=False, print_errors=False):
@@ -104,7 +100,7 @@ def up_server(host, user, key, name, image):
     )
 
     rsa_key = paramiko.RSAKey.from_private_key_file(key)
-    ssh.connect(host, username=user, pkey=rsa_key,banner_timeout=120,timeout=120)
+    ssh.connect(host, username=user, pkey=rsa_key, banner_timeout=120, timeout=120)
 
     # stop container
     cmd = DOCKER + " rm -f " + name
@@ -131,8 +127,6 @@ def link_servers(nodes, name, vol, brick):
     start_command = 'gluster volume start ' + vol
     connect_command = 'gluster volume create ' \
                       + vol \
-                      + ' replica ' \
-                      + '2' \
                       + ' transport tcp '
 
     for node in nodes:
@@ -183,7 +177,7 @@ def up():
             res = False
             print "Node up fail"
     if res is False:
-        sys.exit(1)
+        return 1
 
     print "Servers Up done"
     print "Start Linking"
@@ -194,24 +188,50 @@ def up():
         gl_data['vol'],
         gl_data['brick']
     )
-    if rc != 0:
+    if rc > 0:
         print "client up fail"
-        sys.exit(1)
+        return 1
     print "Up client"
     rc = up_vagrant()
-    if rc != 0:
+    if rc > 0:
         print "client up fail"
-        sys.exit(1)
+        return 1
 
     print "Link Client"
 
     rc = connect_client(server_data['credentials'][0]['ip'], client_data, gl_data)
-    if rc != 0:
+    if rc > 0:
         print "client link fail"
-        sys.exit(1)
+        return 1
+
+    print "Up Done!"
+
+def cmd_input():
+    try:
+        cmd = ''
+        print "input command"
+        while cmd != 'exit':
+            cmd = raw_input('pgluster> ')
+            if cmd == 'up':
+                up()
+            elif cmd == 'help':
+                cmd_help()
+            elif cmd == 'exit':
+                cmd_exit(0)
+            else:
+                print "No command '%s' found, use help" % str(cmd)
+    except KeyboardInterrupt:
+        cmd_exit(0)
+
+
+def cmd_exit(code):
+    print '\nBye'
+    sys.exit(code)
+
+
+def cmd_help():
+    print 'up  -- up server and client'
 
 
 if __name__ == '__main__':
-    # here will be args
-    if True:
-        up()
+    cmd_input()
