@@ -20,7 +20,7 @@ $ pip install -r requirements.txt
 На удалённой машине нужно установить docker и дать права пользователю
 [Установить Docker Linux](http://docs.docker.com/linux/step_one/).
 
-Также нужно добавить пользователю ключь
+Также нужно добавить пользователю ключ
 либо свой и в настройках указать путь, либо key/open_key.pub
 ~~~
 wget -qO- https://get.docker.com/ | sh
