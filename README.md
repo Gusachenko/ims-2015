@@ -1,11 +1,16 @@
 # ism-2015
 Курс "Основы технологий хранения данных"
 
-Тема: разработка распределённой, параллельной, линейно масштабируемой файловой системы <b>GLusterFS</b>.
+Тема: Разработка объектного хранилища на основе <b>GLusterFS</b>.
 
 Установка зависимостей
 
 ~~~
+sudo apt-get install python-pip python-dev
+
+wget -qO- https://get.docker.com/ | sh
+sudo usermod -aG docker %user%
+
 $ pip install -r requirements.txt
 ~~~
 
@@ -15,7 +20,14 @@ $ pip install -r requirements.txt
 На удалённой машине нужно установить docker и дать права пользователю
 [Установить Docker Linux](http://docs.docker.com/linux/step_one/).
 
-Контейнеров должно быть кратно 2
+Также нужно добавить пользователю ключь
+либо свой и в настройках указать путь, либо key/open_key.pub
+~~~
+wget -qO- https://get.docker.com/ | sh
+sudo usermod -aG docker %user%
+~~~
+
+Конфигурирование 
 
 ~~~
 server:
@@ -29,6 +41,7 @@ server:
 Запуск 
 ~~~
 $ ./pgluster.py
+pgluster> up
 
 #check
 curl http://localhost:9092/
