@@ -4,19 +4,12 @@ glusterfs:
       server:
           name: glusterfs-server
           image: "farmatholin/glusterfs-server:latest"
+          key: "/etc/pgluster/key/open_key"
           credentials:
             - user: user
-              key: "key/open_key"
               ip: "192.168.94.134"
             - user: user
-              key: "key/open_key"
               ip: "192.168.94.136"
-            - user: user
-              key: "key/open_key"
-              ip: "192.168.94.137"
-            - user: user
-              key: "key/open_key"
-              ip: "192.168.94.138"
       client:
           name: glusterfs-client
           image: "farmatholin/glusterfs-client:latest"

@@ -2,3 +2,4 @@ pyyaml
 paramiko
 pycrypto
 ecdsa
+pymongo
