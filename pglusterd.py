@@ -2,6 +2,7 @@
 import os
 
 import sys, time
+from pymongo import MongoClient
 from src.daemon import Daemon
 import socket
 import sys
@@ -24,10 +25,11 @@ CLIENT_LINKED_STATE = 'client linked'
 
 
 class MyDaemon(Daemon):
-    nodes = {}
+    nodes = []
     key = ''
     config = {}
     gluster_config = {}
+    db = {}
     state = STATE_START
     client_state = CLIENT_START_STATE
 
@@ -48,6 +50,14 @@ class MyDaemon(Daemon):
         while True:
             try:
                 data = str(conn.recv(BUFFER)).lower()
+                args = []
+                if len(data.split(' ')) > 2:
+                    sub_data = data.split(' ')
+                    if sub_data[0] == 'server' and sub_data[1] == 'add':
+                        data = sub_data[0] + " " + sub_data[1]
+                        for arg in sub_data[2:]:
+                            args.append(arg)
+
                 if data == 'help':
                     reply = {'type': 1, 'msg': cmd_help()}
                 elif data == 'check':
@@ -60,6 +70,69 @@ class MyDaemon(Daemon):
                     reply = {'type': 1, 'msg': self.client_state}
                 elif data == 'server status':
                     reply = {'type': 1, 'msg': cmd_server_status(self.nodes)}
+                elif data == 'server nodes':
+                    reply = {'type': 1, 'msg': str(self.nodes)}
+                elif data == "server add":
+                    collection = self.db[self.config['mongo']['server_collection']]
+                    res = collection.find_one(dict(ip=args[1]))
+                    if res is not None:
+                        reply = {'type': 1, 'msg': "already exist " + args[1]}
+                        continue
+                    collection.save({
+                        "name": args[0],
+                        "ip": args[1]
+                    })
+                    r_node = {}
+                    r_node['name'] = str(args[0])
+                    r_node['ip'] = str(args[1])
+                    r_node['status'] = 0
+                    r_node['connected'] = 0
+                    if self.state == STATE_START:
+                        reply = {'type': 1, 'msg': "add server " + args[1]}
+                        conn.send(str(reply))
+                        self.nodes.append(r_node)
+                        continue
+
+                    if self.state != STATE_START:
+                        reply = {'type': 0, 'msg': "up node " + args[1]}
+                        conn.send(str(reply))
+                        up_count, msg = cmd_server_up(
+                            self.gluster_config['server']['name'],
+                            self.gluster_config['server']['image'],
+                            self.key,
+                            [r_node],
+                        )
+
+                        if self.state == STATE_SERVER_UP:
+                            self.nodes.append(r_node)
+                        if up_count > 0:
+                            reply = {'type': 0, 'msg': msg}
+                            conn.send(str(reply))
+
+                        else:
+                            reply = {'type': 1, 'msg': msg}
+                            conn.send(str(reply))
+                            continue
+
+                        if self.state == STATE_SERVER_LINKED:
+                            sleep(2)
+                            reply = {'type': 0, 'msg': "start linking "+ args[1]}
+                            conn.send(str(reply))
+                            for node in self.nodes:
+                                if node['status'] == 1:
+                                    server = node
+                            status, response = append_link(
+                                node=r_node,
+                                server=server,
+                                name=self.gluster_config['server']['name'],
+                                vol=self.gluster_config['vol'],
+                                brick=self.gluster_config['brick'],
+                                key=self.key
+                            )
+                            self.nodes.append(r_node)
+
+                            reply = {'type': 1, 'msg': response}
+
                 elif data == 'client up':
                     if self.state != STATE_SERVER_LINKED:
                         reply = str({'type': 1, 'msg': "Server is not up"})
@@ -99,6 +172,10 @@ class MyDaemon(Daemon):
                             continue
 
                 elif data == 'server up':
+                    if len(self.nodes) == 0:
+                        reply = str({'type': 1, 'msg': "Add server, no servers"})
+                        conn.send(reply)
+                        continue
                     if self.state == STATE_SERVER_LINKED:
                         reply = str({'type': 1, 'msg': "Server is up"})
                         conn.send(reply)
@@ -155,10 +232,19 @@ class MyDaemon(Daemon):
         self.config = get_containers_data()
         self.gluster_config = self.config['glusterfs']
         self.key = load_key(self.gluster_config['server']['key'])
-        self.nodes = self.gluster_config['server']['credentials']
-        for node in self.nodes:
-            node['status'] = 0
-            node['connected'] = 0
+        self.db = MongoClient(
+            self.config['mongo']['host'],
+            self.config['mongo']['port'])[self.config['mongo']['name']]
+        collection = self.db[self.config['mongo']['server_collection']]
+        res = collection.find({})
+        if res is not None:
+            for node in res:
+                r_node = {}
+                r_node['name'] = str(node['name'])
+                r_node['ip'] = str(node['ip'])
+                r_node['status'] = 0
+                r_node['connected'] = 0
+                self.nodes.append(r_node)
 
 
 if __name__ == "__main__":

@@ -6,11 +6,7 @@ glusterfs:
           name: glusterfs-server
           image: "farmatholin/glusterfs-server:latest"
           key: "/etc/pgluster/key/open_key"
-          credentials:
-            - user: user
-              ip: "192.168.94.134"
-            - user: user
-              ip: "192.168.94.136"
+
       client:
           name: glusterfs-client
           image: "farmatholin/glusterfs-client:latest"
@@ -19,3 +15,8 @@ glusterfs:
           name: nginx-glusterfs
           image: "farmatholin/glusterfs-client-nginx:latest"
           port: "9092"
+mongo:
+      name: pgluster
+      host: localhost
+      port: 27017
+      server_collection: "servers"

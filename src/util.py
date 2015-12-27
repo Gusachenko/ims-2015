@@ -54,6 +54,51 @@ def server_run_cmd(host, user, key, cmd):
     return rc
 
 
+def append_link(node, server, name, vol, brick, key):
+    response = ''
+    status = False
+
+    peer_command = ''
+    start_command = 'gluster volume start ' + vol
+    connect_command = 'gluster volume create ' + vol + ' transport tcp '
+    connect_command += node['ip'] + ":" + brick
+    connect_command += " force"
+
+    peer_command += "gluster peer probe " + node['ip'] + "; "
+
+    peer_command = 'docker exec ' + name + " /bin/sh -c '" + peer_command + "'"
+    rc = server_run_cmd(server['ip'], server['name'], key, peer_command)
+
+    if rc > 0:
+
+        response += "server peer connecting fail\n"
+        return status, response
+    else:
+        response += "server peer connecting good\n"
+
+    connect_command = 'docker exec ' + name + " /bin/sh -c '" + connect_command + "'"
+    rc = server_run_cmd(node['ip'], node['name'], key, connect_command)
+
+    if rc > 0:
+        response += "server connecting fail\n"
+        return status, response
+    else:
+        response += "server connecting good\n"
+
+    start_command = 'docker exec ' + name + " /bin/sh -c '" + start_command + "'"
+    rc = server_run_cmd(node['ip'], node['name'], key, start_command)
+
+    if rc > 0:
+        response += "server start fail\n"
+    else:
+        status = True
+        response += "server start good\n"
+
+    node['connected'] = 1
+
+    return status, response
+
+
 def link_servers(nodes, name, vol, brick, key):
     response = ''
     status = False
@@ -73,7 +118,7 @@ def link_servers(nodes, name, vol, brick, key):
     connect_command += " force"
 
     peer_command = 'docker exec ' + name + " /bin/sh -c '" + peer_command + "'"
-    rc = server_run_cmd(first_node['ip'], first_node['user'], key, peer_command)
+    rc = server_run_cmd(first_node['ip'], first_node['name'], key, peer_command)
 
     if rc > 0:
 
@@ -83,7 +128,7 @@ def link_servers(nodes, name, vol, brick, key):
         response += "server peer connecting good\n"
 
     connect_command = 'docker exec ' + name + " /bin/sh -c '" + connect_command + "'"
-    rc = server_run_cmd(first_node['ip'], first_node['user'], key, connect_command)
+    rc = server_run_cmd(first_node['ip'], first_node['name'], key, connect_command)
 
     if rc > 0:
         response += "server connecting fail\n"
@@ -92,7 +137,7 @@ def link_servers(nodes, name, vol, brick, key):
         response += "server connecting good\n"
 
     start_command = 'docker exec ' + name + " /bin/sh -c '" + start_command + "'"
-    rc = server_run_cmd(first_node['ip'], first_node['user'], key, start_command)
+    rc = server_run_cmd(first_node['ip'], first_node['name'], key, start_command)
 
     if rc > 0:
         response += "server start fail\n"
