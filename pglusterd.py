@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+import os
 
 import sys, time
 from src.daemon import Daemon
@@ -7,6 +8,7 @@ import sys
 from thread import *
 from src.util import *
 from src.commands import *
+from shutil import move, copy
 
 HOST = ''
 PORT = 8888
@@ -16,6 +18,10 @@ STATE_START = 'start'
 STATE_SERVER_UP = 'server up'
 STATE_SERVER_LINKED = 'server linked'
 
+CLIENT_START_STATE = 'start'
+CLIENT_UP_STATE = 'client up'
+CLIENT_LINKED_STATE = 'client linked'
+
 
 class MyDaemon(Daemon):
     nodes = {}
@@ -23,6 +29,7 @@ class MyDaemon(Daemon):
     config = {}
     gluster_config = {}
     state = STATE_START
+    client_state = CLIENT_START_STATE
 
     def run(self):
         try:
@@ -45,10 +52,52 @@ class MyDaemon(Daemon):
                     reply = {'type': 1, 'msg': cmd_help()}
                 elif data == 'check':
                     reply = {'type': 1, 'msg': 'done'}
+                elif data == 'path':
+                    reply = {'type': 1, 'msg': os.path.dirname(os.path.realpath(__file__))}
                 elif data == 'state':
                     reply = {'type': 1, 'msg': self.state}
+                elif data == 'client state':
+                    reply = {'type': 1, 'msg': self.client_state}
                 elif data == 'server status':
                     reply = {'type': 1, 'msg': cmd_server_status(self.nodes)}
+                elif data == 'client up':
+                    if self.state != STATE_SERVER_LINKED:
+                        reply = str({'type': 1, 'msg': "Server is not up"})
+                        conn.send(reply)
+                        continue
+                    if self.client_state == CLIENT_LINKED_STATE:
+                        reply = str({'type': 1, 'msg': "Client linked"})
+                        conn.send(reply)
+                        continue
+                    if self.client_state == CLIENT_START_STATE:
+                        copy(self.gluster_config['vagrant_file'], '/tmp/Vagrantfile')
+                        os.chdir('/tmp/')
+                        status, msg = cmd_client_up()
+                        os.chdir('/')
+
+                        if status:
+                            self.client_state = CLIENT_UP_STATE
+                            reply = str({'type': 0, 'msg': msg})
+                            conn.send(reply)
+                        else:
+                            reply = str({'type': 1, 'msg': msg})
+                            conn.send(reply)
+                            continue
+
+                    if self.client_state == CLIENT_UP_STATE:
+                        status = cmd_client_link(
+                            self.gluster_config['vol'],
+                            self.gluster_config['client']['name'],
+                            self.nodes,
+                        )
+                        if status:
+                            self.client_state = CLIENT_LINKED_STATE
+                            reply = str({'type': 1, 'msg': "Link Done"})
+                        else:
+                            reply = str({'type': 1, 'msg': "Link failed"})
+                            conn.send(reply)
+                            continue
+
                 elif data == 'server up':
                     if self.state == STATE_SERVER_LINKED:
                         reply = str({'type': 1, 'msg': "Server is up"})

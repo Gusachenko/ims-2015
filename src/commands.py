@@ -6,9 +6,9 @@ from util import *
 def cmd_help():
     help_str = 'server up - for up servers \n' \
                'server status - return servers status \n' \
-               'server count - return online servers count \n' \
                'server add %username% %ip% - add new server and connect it if state is linked return status \n' \
                'state - get state \n' \
+               'client state - get client state \n' \
                'client up - for up client \n'
     return help_str
 
@@ -53,3 +53,29 @@ def cmd_server_status(nodes):
             if node['connected'] == 1:
                 response += "\t" + node['ip'] + ' is connected \n'
     return response
+
+
+def cmd_client_up():
+    rc = up_vagrant()
+    if rc > 0:
+        response = 'Client up fail'
+    else:
+        response = 'Client up'
+
+    return not(rc > 0), response
+
+
+def cmd_client_link(vol, name, nodes):
+    server = ''
+    for node in nodes:
+        if node['status'] == 1 and node['connected'] == 1:
+            server = node['ip']
+            break
+    if server == "":
+        return False
+
+    run_command = "mount -t glusterfs " + server + ":/" + vol + " /mnt/glusterfs"
+
+    rc = manage_script([DOCKER, 'exec', name, '/bin/sh', '-c', run_command])
+
+    return rc > 0

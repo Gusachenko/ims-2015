@@ -10,19 +10,19 @@ DOCKER = 'docker'
 VAGRANT = 'vagrant'
 
 
-def manage_script(args, print_output=False, print_errors=False):
+def manage_script(args):
     sleep(2)
     child = Popen(args, stdout=PIPE, stderr=PIPE)
 
-    output = child.stdout.read()
-    err = child.stderr.read()
-    if print_output:
-        print output
-    if print_errors:
-        print err
-
     child.communicate()
     rc = child.returncode
+    return rc
+
+
+def up_vagrant():
+    manage_script([VAGRANT, 'halt', '-f'])
+    rc = manage_script([VAGRANT, 'up', "--no-parallel"])
+
     return rc
 
 

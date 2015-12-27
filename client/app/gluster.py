@@ -1,7 +1,7 @@
 import hashlib
 import os
 from random import randint
-from shutil import move
+from shutil import move,copy
 
 VOLUME_DIR = os.environ.get('SAVE_DIR', "/mnt/glusterfs")
 

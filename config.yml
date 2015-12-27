@@ -1,6 +1,7 @@
 glusterfs:
       vol: ims
       brick: "/gluster_volume"
+      vagrant_file: "/etc/pgluster/Vagrantfile"
       server:
           name: glusterfs-server
           image: "farmatholin/glusterfs-server:latest"
