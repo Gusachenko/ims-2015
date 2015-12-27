@@ -1,9 +1,9 @@
 #!/usr/bin/env python
-# -*- coding: utf-8 -*-
+import re
 
 import socket
 import sys
-
+import json
 
 BUFFER = 4096
 
@@ -13,10 +13,20 @@ def cmd_input(sock):
         cmd = ''
         print "input command"
         while cmd != 'exit':
-            cmd = raw_input('pgluster> ')
-            sock.send(cmd)
-            data = sock.recv(BUFFER)
-            print data
+            cmd = str(raw_input('pgluster> '))
+            if len(cmd) != 0:
+                sock.send(cmd)
+                while True:
+                    data = sock.recv(BUFFER)
+                    try:
+                        json_acceptable_string = data.replace("'", "\"")
+                        res = json.loads(json_acceptable_string)
+                        print str(res['msg'])
+                        if res['type'] == 1:
+                            break
+                    except:
+                        print data
+                        break
     except:
         cmd = 'exit'
     sock.send(cmd)
@@ -29,8 +39,8 @@ if __name__ == '__main__':
         sock.connect(('localhost', 8888))
         code = cmd_input(sock)
         sock.close()
-    except :
+    except:
         print "Is 'pglusterd' running?"
         code = 111
-    print 'Bye'
+    print '\nBye'
     sys.exit(code)

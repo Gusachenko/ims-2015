@@ -41,17 +41,23 @@ def server_run_cmd(host, user, key, cmd):
         paramiko.AutoAddPolicy()
     )
 
-    rsa_key = paramiko.RSAKey.from_private_key_file(key)
+    rsa_key = key
     ssh.connect(host, username=user, pkey=rsa_key, banner_timeout=120, timeout=120)
-
-    ssh_stdin, ssh_stdout, ssh_stderr = ssh.exec_command(cmd)
+    if type(cmd) is list:
+        for cmd_run in cmd:
+            ssh_stdin, ssh_stdout, ssh_stderr = ssh.exec_command(cmd_run)
+    else:
+        ssh_stdin, ssh_stdout, ssh_stderr = ssh.exec_command(cmd)
 
     rc = ssh_stdout.channel.recv_exit_status()
     ssh.close()
     return rc
 
 
-def link_servers(nodes, name, vol, brick):
+def link_servers(nodes, name, vol, brick, key):
+    response = ''
+    status = False
+
     peer_command = ''
     start_command = 'gluster volume start ' + vol
     connect_command = 'gluster volume create ' \
@@ -59,19 +65,43 @@ def link_servers(nodes, name, vol, brick):
                       + ' transport tcp '
 
     for node in nodes:
-        peer_command += "gluster peer probe " + node['ip'] + "; "
-        connect_command += " " + node['ip'] + ":" + brick
+        if node['status'] == 1:
+            peer_command += "gluster peer probe " + node['ip'] + "; "
+            connect_command += " " + node['ip'] + ":" + brick
+            first_node = node
 
     connect_command += " force"
-    first_node = nodes[0]
+
     peer_command = 'docker exec ' + name + " /bin/sh -c '" + peer_command + "'"
-    rc = exec_ssh_docker(first_node['ip'], name, peer_command)
-    print "connecting peers return code = %d" % rc
+    rc = server_run_cmd(first_node['ip'], first_node['user'], key, peer_command)
 
-    rc = exec_ssh_docker(first_node, name, connect_command)
-    print "volume create command return code = %d" % rc
+    if rc > 0:
 
-    rc = exec_ssh_docker(first_node, name, start_command)
-    print "start return code = %d" % rc
+        response += "server peer connecting fail\n"
+        return status, response
+    else:
+        response += "server peer connecting good\n"
 
-    return rc
+    connect_command = 'docker exec ' + name + " /bin/sh -c '" + connect_command + "'"
+    rc = server_run_cmd(first_node['ip'], first_node['user'], key, connect_command)
+
+    if rc > 0:
+        response += "server connecting fail\n"
+        return status, response
+    else:
+        response += "server connecting good\n"
+
+    start_command = 'docker exec ' + name + " /bin/sh -c '" + start_command + "'"
+    rc = server_run_cmd(first_node['ip'], first_node['user'], key, start_command)
+
+    if rc > 0:
+        response += "server start fail\n"
+    else:
+        status = True
+        response += "server start good\n"
+
+    for node in nodes:
+        if node['status'] == 1:
+            node['connected'] = 1
+
+    return status, response

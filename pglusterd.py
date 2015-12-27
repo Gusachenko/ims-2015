@@ -12,13 +12,18 @@ HOST = ''
 PORT = 8888
 BUFFER = 4096
 
-nodes = []
-key = ''
-config = ''
-gluster_config = ''
+STATE_START = 'start'
+STATE_SERVER_UP = 'server up'
+STATE_SERVER_LINKED = 'server linked'
 
 
 class MyDaemon(Daemon):
+    nodes = {}
+    key = ''
+    config = {}
+    gluster_config = {}
+    state = STATE_START
+
     def run(self):
         try:
             s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -32,27 +37,79 @@ class MyDaemon(Daemon):
         except socket.error:
             self.stop()
 
-    @staticmethod
-    def client_thread(conn):
+    def client_thread(self, conn):
         while True:
-            data = conn.recv(BUFFER)
-            if data == 'up':
-                reply = 'ip'
-            elif data == 'exit':
-                break
-            else:
-                reply = "No command '%s' found, use help" % str(data)
-            conn.sendall(reply)
+            try:
+                data = str(conn.recv(BUFFER)).lower()
+                if data == 'help':
+                    reply = {'type': 1, 'msg': cmd_help()}
+                elif data == 'check':
+                    reply = {'type': 1, 'msg': 'done'}
+                elif data == 'state':
+                    reply = {'type': 1, 'msg': self.state}
+                elif data == 'server status':
+                    reply = {'type': 1, 'msg': cmd_server_status(self.nodes)}
+                elif data == 'server up':
+                    if self.state == STATE_SERVER_LINKED:
+                        reply = str({'type': 1, 'msg': "Server is up"})
+                        conn.send(reply)
+                        continue
+                    if self.state == STATE_START:
+                        reply = str({'type': 0, 'msg': "start up servers"})
+                        conn.send(reply)
+                        up_count, msg = cmd_server_up(
+                            self.gluster_config['server']['name'],
+                            self.gluster_config['server']['image'],
+                            self.key,
+                            self.nodes,
+                        )
+
+                        if up_count > 0:
+                            reply = {'type': 0, 'msg': msg}
+                            conn.send(str(reply))
+
+                            self.state = STATE_SERVER_UP
+                        else:
+                            reply = {'type': 1, 'msg': msg}
+                            conn.send(str(reply))
+                            continue
+
+                    sleep(2)
+                    if self.state == STATE_SERVER_UP:
+                        reply = {'type': 0, 'msg': "start linking"}
+                        conn.send(str(reply))
+
+                        status, response = link_servers(
+                            self.nodes,
+                            self.gluster_config['server']['name'],
+                            self.gluster_config['vol'],
+                            self.gluster_config['brick'],
+                            self.key
+                        )
+                        if status:
+                            self.state = STATE_SERVER_LINKED
+                        reply = {'type': 1, 'msg': response}
+
+                    else:
+                        reply = {'type': 1, 'msg': "Wrong state restart daemon"}
+
+                elif data == 'exit':
+                    break
+                else:
+                    reply = {'type': 1, 'msg': 'No command %s found, use help' % str(data)}
+                conn.send(str(reply))
+            except:
+                conn.send(str({'type': 1, 'msg': "error"}))
         conn.close()
 
-    @staticmethod
-    def preparations():
-        config = get_containers_data()
-        gluster_config = config['glusterfs']
-        key = load_key(gluster_config['server']['key'])
-        nodes = gluster_config['server']['credentials']
-        for node in nodes:
+    def preparations(self):
+        self.config = get_containers_data()
+        self.gluster_config = self.config['glusterfs']
+        self.key = load_key(self.gluster_config['server']['key'])
+        self.nodes = self.gluster_config['server']['credentials']
+        for node in self.nodes:
             node['status'] = 0
+            node['connected'] = 0
 
 
 if __name__ == "__main__":
