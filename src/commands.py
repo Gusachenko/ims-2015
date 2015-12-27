@@ -1,5 +1,5 @@
 __author__ = 'Vladislav'
-from serverUpThread import ServerUpThread
+from ServerUpThread import ServerUpThread
 from util import *
 
 
