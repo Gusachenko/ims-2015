@@ -145,7 +145,10 @@ class MyDaemon(Daemon):
                     if self.client_state == CLIENT_START_STATE:
                         copy(self.gluster_config['vagrant_file'], '/tmp/Vagrantfile')
                         os.chdir('/tmp/')
-                        status, msg = cmd_client_up()
+                        status, msg = cmd_client_up(
+                            self.gluster_config['client'],
+                            self.gluster_config['web']
+                        )
                         os.chdir('/')
 
                         if status:
@@ -158,6 +161,7 @@ class MyDaemon(Daemon):
                             continue
 
                     if self.client_state == CLIENT_UP_STATE:
+                        sleep(2)
                         status = cmd_client_link(
                             self.gluster_config['vol'],
                             self.gluster_config['client']['name'],
@@ -225,6 +229,7 @@ class MyDaemon(Daemon):
                     reply = {'type': 1, 'msg': 'No command %s found, use help' % str(data)}
                 conn.send(str(reply))
             except:
+                sleep(2)
                 conn.send(str({'type': 1, 'msg': "error"}))
         conn.close()
 

@@ -1,10 +1,4 @@
-import threading
 from util import *
-import paramiko
-import yaml
-from subprocess import Popen, PIPE
-from time import sleep
-import sys
 
 
 class ServerUpThread(threading.Thread):
@@ -32,13 +26,13 @@ class ServerUpThread(threading.Thread):
                 run_cmd
             ]
 
-            exit_code = server_run_cmd(
+            exit_code, codes = server_run_cmd(
                 self.node['ip'],
-                self.node['user'],
+                self.node['name'],
                 self.key,
                 cmd,
             )
-            if exit_code is 0:
+            if not(codes[1] > 0):
                 self.result = True
                 self.node['status'] = 1
         except:

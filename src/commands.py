@@ -55,8 +55,8 @@ def cmd_server_status(nodes):
     return response
 
 
-def cmd_client_up():
-    rc = up_vagrant()
+def cmd_client_up(client, web):
+    rc = up_vagrant(client, web)
     if rc > 0:
         response = 'Client up fail'
     else:
@@ -66,7 +66,7 @@ def cmd_client_up():
 
 
 def cmd_client_link(vol, name, nodes):
-    server = ''
+    server = ""
     for node in nodes:
         if node['status'] == 1 and node['connected'] == 1:
             server = node['ip']
