@@ -59,6 +59,7 @@ def save_file(stream, filename):
 def remove_file(oid):
     try:
         os.remove(VOLUME_DIR + "/" + oid)
+        os.remove(VOLUME_DIR + "/" + oid + '.meta')
         return True
     except:
         return False
