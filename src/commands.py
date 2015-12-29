@@ -7,7 +7,7 @@ def cmd_help():
     help_str = 'server up - for up servers \n' \
                'server status - return servers status \n' \
                'server add %username% %ip% - add new server and connect it if state is linked return status \n' \
-               'state - get state \n' \
+               'server state - get server state \n' \
                'client state - get client state \n' \
                'client up - for up client \n'
     return help_str

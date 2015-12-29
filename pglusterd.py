@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+import json
 import os
 
 import sys, time
@@ -62,16 +63,12 @@ class MyDaemon(Daemon):
                     reply = {'type': 1, 'msg': cmd_help()}
                 elif data == 'check':
                     reply = {'type': 1, 'msg': 'done'}
-                elif data == 'path':
-                    reply = {'type': 1, 'msg': os.path.dirname(os.path.realpath(__file__))}
-                elif data == 'state':
+                elif data == 'server state':
                     reply = {'type': 1, 'msg': self.state}
                 elif data == 'client state':
                     reply = {'type': 1, 'msg': self.client_state}
                 elif data == 'server status':
                     reply = {'type': 1, 'msg': cmd_server_status(self.nodes)}
-                elif data == 'server nodes':
-                    reply = {'type': 1, 'msg': str(self.nodes)}
                 elif data == "server add":
                     collection = self.db[self.config['mongo']['server_collection']]
                     res = collection.find_one(dict(ip=args[1]))
@@ -89,13 +86,13 @@ class MyDaemon(Daemon):
                     r_node['connected'] = 0
                     if self.state == STATE_START:
                         reply = {'type': 1, 'msg': "add server " + args[1]}
-                        conn.send(str(reply))
+                        self.send(conn, reply)
                         self.nodes.append(r_node)
                         continue
 
                     if self.state != STATE_START:
                         reply = {'type': 0, 'msg': "up node " + args[1]}
-                        conn.send(str(reply))
+                        self.send(conn, reply)
                         up_count, msg = cmd_server_up(
                             self.gluster_config['server']['name'],
                             self.gluster_config['server']['image'],
@@ -107,17 +104,17 @@ class MyDaemon(Daemon):
                             self.nodes.append(r_node)
                         if up_count > 0:
                             reply = {'type': 0, 'msg': msg}
-                            conn.send(str(reply))
+                            self.send(conn, reply)
 
                         else:
                             reply = {'type': 1, 'msg': msg}
-                            conn.send(str(reply))
+                            self.send(conn, reply)
                             continue
 
                         if self.state == STATE_SERVER_LINKED:
                             sleep(2)
-                            reply = {'type': 0, 'msg': "start linking "+ args[1]}
-                            conn.send(str(reply))
+                            reply = {'type': 0, 'msg': "start linking " + args[1]}
+                            self.send(conn, reply)
                             for node in self.nodes:
                                 if node['status'] == 1:
                                     server = node
@@ -135,12 +132,12 @@ class MyDaemon(Daemon):
 
                 elif data == 'client up':
                     if self.state != STATE_SERVER_LINKED:
-                        reply = str({'type': 1, 'msg': "Server is not up"})
-                        conn.send(reply)
+                        reply = {'type': 1, 'msg': "Server is not up"}
+                        self.send(conn, reply)
                         continue
                     if self.client_state == CLIENT_LINKED_STATE:
-                        reply = str({'type': 1, 'msg': "Client linked"})
-                        conn.send(reply)
+                        reply = {'type': 1, 'msg': "Client linked"}
+                        self.send(conn, reply)
                         continue
                     if self.client_state == CLIENT_START_STATE:
                         copy(self.gluster_config['vagrant_file'], '/tmp/Vagrantfile')
@@ -153,11 +150,11 @@ class MyDaemon(Daemon):
 
                         if status:
                             self.client_state = CLIENT_UP_STATE
-                            reply = str({'type': 0, 'msg': msg})
-                            conn.send(reply)
+                            reply = {'type': 0, 'msg': msg}
+                            self.send(conn, reply)
                         else:
-                            reply = str({'type': 1, 'msg': msg})
-                            conn.send(reply)
+                            reply = {'type': 1, 'msg': msg}
+                            self.send(conn, reply)
                             continue
 
                     if self.client_state == CLIENT_UP_STATE:
@@ -169,24 +166,25 @@ class MyDaemon(Daemon):
                         )
                         if status:
                             self.client_state = CLIENT_LINKED_STATE
-                            reply = str({'type': 1, 'msg': "Link Done"})
+                            reply = {'type': 1, 'msg': "Link Done"}
                         else:
-                            reply = str({'type': 1, 'msg': "Link failed"})
-                            conn.send(reply)
+                            reply = {'type': 1, 'msg': "Link failed"}
+                            self.send(conn, reply)
                             continue
 
                 elif data == 'server up':
                     if len(self.nodes) == 0:
-                        reply = str({'type': 1, 'msg': "Add server, no servers"})
-                        conn.send(reply)
+                        reply = {'type': 1, 'msg': "Add server, no servers"}
+                        self.send(conn, reply)
                         continue
                     if self.state == STATE_SERVER_LINKED:
-                        reply = str({'type': 1, 'msg': "Server is up"})
-                        conn.send(reply)
+                        reply = {'type': 1, 'msg': "Server is up"}
+                        self.send(conn, reply)
                         continue
+
                     if self.state == STATE_START:
-                        reply = str({'type': 0, 'msg': "start up servers"})
-                        conn.send(reply)
+                        reply = {'type': 0, 'msg': "start up servers"}
+                        self.send(conn, reply)
                         up_count, msg = cmd_server_up(
                             self.gluster_config['server']['name'],
                             self.gluster_config['server']['image'],
@@ -196,18 +194,18 @@ class MyDaemon(Daemon):
 
                         if up_count > 0:
                             reply = {'type': 0, 'msg': msg}
-                            conn.send(str(reply))
+                            self.send(conn, reply)
 
                             self.state = STATE_SERVER_UP
                         else:
                             reply = {'type': 1, 'msg': msg}
-                            conn.send(str(reply))
+                            self.send(conn, reply)
                             continue
 
                     sleep(2)
                     if self.state == STATE_SERVER_UP:
                         reply = {'type': 0, 'msg': "start linking"}
-                        conn.send(str(reply))
+                        self.send(conn, reply)
 
                         status, response = link_servers(
                             self.nodes,
@@ -227,11 +225,17 @@ class MyDaemon(Daemon):
                     break
                 else:
                     reply = {'type': 1, 'msg': 'No command %s found, use help' % str(data)}
-                conn.send(str(reply))
+                self.send(conn, reply)
             except:
                 sleep(2)
-                conn.send(str({'type': 1, 'msg': "error"}))
+                self.send(conn, {'type': 1, 'msg': "error"})
         conn.close()
+
+    @staticmethod
+    def send(conn, message):
+        conn.send(
+            json.dumps(message)
+        )
 
     def preparations(self):
         self.config = get_containers_data()

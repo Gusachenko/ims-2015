@@ -20,7 +20,7 @@ def cmd_input(sock):
                     data = sock.recv(BUFFER)
                     try:
                         json_acceptable_string = data.replace("'", "\"")
-                        res = json.loads(json_acceptable_string)
+                        res = json.loads(json_acceptable_string, "utf-8")
                         print str(res['msg'])
                         if res['type'] == 1:
                             break
