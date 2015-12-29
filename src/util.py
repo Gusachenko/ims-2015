@@ -112,6 +112,9 @@ def link_servers(nodes, name, vol, brick, key):
     return status, response
 
 
+def remove_server(node, key):
+    return None
+
 def append_link(node, server, name, vol, brick, key):
     response = ''
     status = False

@@ -20,3 +20,4 @@ mongo:
       host: localhost
       port: 27017
       server_collection: "servers"
+      status_collection: "status"
