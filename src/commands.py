@@ -8,8 +8,6 @@ def cmd_help():
                'server status - return servers status \n' \
                'server add %username% %ip% - add new server and connect it if state is linked return status \n' \
                'server remove %ip% - remove server \n' \
-               'server state - get server state \n' \
-               'client state - get client state \n' \
                'client up - for up client \n'
     return help_str
 
@@ -56,18 +54,20 @@ def cmd_server_status(nodes):
     return response
 
 
-def cmd_server_remove(ip, nodes, key):
-    return None
+def cmd_server_remove(node, name, key):
+    remove_server(node, name, key)
 
 
 def cmd_client_up(client, web):
     rc = up_vagrant(client, web)
+    status = False
     if rc > 0:
         response = 'Client up fail'
     else:
+        status = True
         response = 'Client up'
 
-    return not (rc > 0), response
+    return status, response
 
 
 def cmd_client_link(vol, name, nodes):

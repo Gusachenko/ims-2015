@@ -54,7 +54,7 @@ class MyDaemon(Daemon):
                 args = []
                 if len(data.split(' ')) > 2:
                     sub_data = data.split(' ')
-                    if sub_data[0] == 'server' and sub_data[1] == 'add':
+                    if sub_data[0] == 'server' and (sub_data[1] in ['add', 'remove']):
                         data = sub_data[0] + " " + sub_data[1]
                         for arg in sub_data[2:]:
                             args.append(arg)
@@ -69,11 +69,32 @@ class MyDaemon(Daemon):
                     reply = {'type': 1, 'msg': self.client_state}
                 elif data == 'server status':
                     reply = {'type': 1, 'msg': cmd_server_status(self.nodes)}
+                elif data == 'server remove':
+                    for l in self.nodes:
+                        if l['ip'] == args[0]:
+                            node = l
+                            break
+                        else:
+                            node = None
+                    if node is None:
+                        reply = {'type': 1, 'msg': args[0] + " not found"}
+                        self.send(conn, reply)
+                        continue
+
+                    reply = {'type': 0, 'msg': node['ip'] + " find"}
+                    self.send(conn, reply)
+                    self.nodes.remove(node)
+                    collection = self.db[self.config['mongo']['server_collection']]
+                    collection.remove(dict(ip=args[0]))
+                    if self.state != STATE_START:
+                        cmd_server_remove(node, self.gluster_config['server']['name'], self.key)
+                    reply = {'type': 1, 'msg': node['ip'] + " removed"}
                 elif data == "server add":
                     collection = self.db[self.config['mongo']['server_collection']]
                     res = collection.find_one(dict(ip=args[1]))
                     if res is not None:
                         reply = {'type': 1, 'msg': "already exist " + args[1]}
+                        self.send(conn, reply)
                         continue
                     collection.save({
                         "name": args[0],

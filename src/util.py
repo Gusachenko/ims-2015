@@ -112,8 +112,10 @@ def link_servers(nodes, name, vol, brick, key):
     return status, response
 
 
-def remove_server(node, key):
-    return None
+def remove_server(node, name, key):
+    command = DOCKER + ' rm -f ' + name
+    rc, res = server_run_cmd(node['ip'], node['name'], key, command)
+
 
 def append_link(node, server, name, vol, brick, key):
     response = ''
