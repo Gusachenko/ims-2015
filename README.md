@@ -16,10 +16,14 @@ $ wget https://dl.bintray.com/mitchellh/vagrant/vagrant_1.6.0_x86_64.deb
 $ sudo dpkg -i vagrant_1.6.0_x86_64.deb
 ~~~
 
-Конфигурирование
+####Конфигурирование
+
 Используйте config.yml
+
 Поместите его в /etc/pgluster
+
 Также туда поместите Vagruntfile
+
 Рекомендуется поместить ключи в /etc/pgluster/key/
 
 Структура config.yml
@@ -58,18 +62,18 @@ wget -qO- https://get.docker.com/ | sh
 sudo usermod -aG docker %user%
 ~~~
 
-Запуск сервиса
+####Запуск сервиса
 ~~~
 $ sudo ./pglusterd.py start
 ~~~
 
-Запуск клиента
+####Запуск клиента
 ~~~
 $ ./pgluster.py
-pgluster> help
+pgluster> help # получение списка команд
 ~~~
 
-#check
+####Проверка
 ~~~
 curl http://localhost:9092/
 "Good morning sir"
