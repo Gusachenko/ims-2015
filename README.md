@@ -73,6 +73,15 @@ $ ./pgluster.py
 pgluster> help # получение списка команд
 ~~~
 
+####Команды клиента
+~~~
+server up - up servers
+server status - return servers status
+server add %username% %ip% - add new server and connect it
+server remove %ip% - remove server
+client up - up client
+~~~
+
 ####Проверка
 ~~~
 curl http://localhost:9092/
